@@ -1,5 +1,7 @@
 #pragma once
 #include <cmath>
+#include <limits>
+#include <cassert>
 #include "KDHyperRect.h"
 #include "KDNode.h"
 #include "KDResult.h"
@@ -99,7 +101,7 @@ int CKDTree<D>::_Insert( CKDNode<D> *&node, const double pos[D], int data, int d
 template<int D>
 void CKDTree<D>::Nearest( const double pos[D], double result[D], int &data )
 {
-	double radius = dist(root->pos, pos, D);
+	double radius = DBL_MAX;
 	CKDNode<D> *nearest = 0;
 	_Nearest(root, pos, radius, rect, nearest);
 	for (size_t i = 0; i < D; ++i) {
@@ -111,6 +113,7 @@ void CKDTree<D>::Nearest( const double pos[D], double result[D], int &data )
 template<int D>
 void CKDTree<D>::_Nearest( CKDNode<D> *&node, const double pos[D], double &radius, CKDHyperRect<D> rect, CKDNode<D> *&result )
 {
+	assert(node);
 	int dir = node->dir;
 	double dummy;
 	CKDNode<D> *nearer, *farther;
@@ -173,6 +176,7 @@ void CKDTree<D>::NearestRange( const double pos[D], double range )
 template<int D>
 void CKDTree<D>::_NearestRange( CKDNode<D> *&node, const double pos[D], double range, CKDHyperRect<D> rect, CKDResult<D> &result )
 {
+	assert(node);
 	int dir = node->dir;
 	double dummy;
 	CKDNode<D> *nearer, *farther;
