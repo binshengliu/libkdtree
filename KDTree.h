@@ -1,68 +1,21 @@
 #pragma once
 #include <cmath>
+#include "KDHyperRect.h"
+
+double dist(const double pos1[], const double pos2[], size_t len);
 
 template<int D>
-double dist(const double pos1[D], const double pos2[D])
-{
-	double result = 0.0;
-	for (size_t i = 0; i < D; ++i) {
-		result += std::pow(pos1[i] - pos2[i], 2);
-	}
-	return sqrt(result);
-}
-
-template<int D>
-class CKDHyperRect;
-
-template<int D>
-double dist_rect(const CKDHyperRect<D> rect, const double pos[D])
-{
-	double result = 0;
-
-	for (size_t i = 0; i < D; ++i) {
-		if (pos[i] < rect.bound[i].min) {
-			result += pow(rect.bound[i].min - pos[i], 2);
-		} else if (pos[i] > rect.bound[i].max) {
-			result += pow(rect.bound[i].max - pos[i], 2);
-		} else {
-			result += pow(pos[i], 2);
-		}
-	}
-
-	result = sqrt(result);
-	return result;
-}
-
-
-template<int D, class T>
 class CKDNode
 {
 public:
 	double pos[D];
 	int dir;
-	T *data;
+	int data;
 
-	CKDNode<D, T> *left, *right;	/* negative/positive side */
+	CKDNode<D> *left, *right;	/* negative/positive side */
 };
 
-class CInterval
-{
-public:
-	CInterval()
-	{
-		min = max = 0;
-	}
-	double min;
-	double max;
-};
 template<int D>
-class CKDHyperRect
-{
-public:
-	CInterval bound[D];
-};
-
-template<int D, class T>
 class CKDTree
 {
 public:
@@ -70,63 +23,55 @@ public:
 	~CKDTree(void);
 	void Clear();
 
-	int Insert(const double pos[D], T *data = 0);
-	int _Insert(CKDNode<D, T> *&node, const double pos[D], T *data, int dir);
-	void Nearest(const double pos[D], double result[D], T *&data);
-	void _Nearest(CKDNode<D, T> *&node, const double pos[D], double &radius, CKDHyperRect<D> rect, CKDNode<D, T> *&result);
+	int Insert(const double pos[D], int data = 0);
+	void Nearest(const double pos[D], double result[D], int &data);
 	void NearestRange();
 private:
-	static void data_free(void *data)
-	{
-		delete data;
-	}
+	int _Insert(CKDNode<D> *&node, const double pos[D], int data, int dir);
+	void _Nearest(CKDNode<D> *&node, const double pos[D], double &radius, CKDHyperRect<D> rect, CKDNode<D> *&result);
+	void _Delete(CKDNode<D> *&node);
 private:
-	CKDNode<D, T> *root;
+	void (*Destroy)(int data);
+	CKDNode<D> *root;
 	CKDHyperRect<D> rect;
 };
 
-template<int D, class T>
-CKDTree<D, T>::CKDTree()
+template<int D>
+void CKDTree<D>::Clear()
+{
+
+}
+template<int D>
+CKDTree<D>::CKDTree()
 {
 	root = 0;
+	Destroy = 0;
 }
 
-template<int D, class T>
-CKDTree<D, T>::~CKDTree( void )
+template<int D>
+CKDTree<D>::~CKDTree( void )
 {
 	if (root) {
 		delete root;
 	}
 }
 
-template<int D, class T>
-int CKDTree<D, T>::Insert( const double pos[D], T *data )
+template<int D>
+int CKDTree<D>::Insert( const double pos[D], int data )
 {
 	if (root == 0) {
-		// 新建矩形区域
-		for (size_t i=0; i < D; ++i) {
-			rect.bound[i].min = pos[i];
-			rect.bound[i].max = pos[i];
-		}
+		rect.Init(pos);
 	} else {
-		// 扩展矩形区域
-		for (size_t i=0; i < D; ++i) {
-			if (pos[i] < rect.bound[i].min) {
-				rect.bound[i].min = pos[i];
-			}
-			if (pos[i] > rect.bound[i].max) {
-				rect.bound[i].max = pos[i];
-			}
-		}
+		rect.Expand(pos);
 	}
 	return _Insert(root, pos, data, 0);
 }
 
-template<int D, class T>
-int CKDTree<D, T>::_Insert( CKDNode<D, T> *&node, const double pos[D], T *data, int dir )
+template<int D>
+int CKDTree<D>::_Insert( CKDNode<D> *&node, const double pos[D], int data, int dir )
 {
 	if(!node) {
-		if(!(node = new CKDNode<D, T>())) {
+		if(!(node = new CKDNode<D>())) {
 			return -1;
 		}
 		for (size_t i = 0; i < D; ++i) {
@@ -145,11 +90,11 @@ int CKDTree<D, T>::_Insert( CKDNode<D, T> *&node, const double pos[D], T *data, 
 	return _Insert(node->right, pos, data, new_dir);
 }
 
-template<int D, class T>
-void CKDTree<D, T>::Nearest( const double pos[D], double result[D], T *&data )
+template<int D>
+void CKDTree<D>::Nearest( const double pos[D], double result[D], int &data )
 {
-	double radius = dist<D>(root->pos, pos);
-	CKDNode<D, T> *nearest = 0;
+	double radius = dist(root->pos, pos, D);
+	CKDNode<D> *nearest = 0;
 	_Nearest(root, pos, radius, rect, nearest);
 	for (size_t i = 0; i < D; ++i) {
 		result[i] = nearest->pos[i];
@@ -157,12 +102,12 @@ void CKDTree<D, T>::Nearest( const double pos[D], double result[D], T *&data )
 	data = nearest->data;
 }
 
-template<int D, class T>
-void CKDTree<D, T>::_Nearest( CKDNode<D, T> *&node, const double pos[D], double &radius, CKDHyperRect<D> rect, CKDNode<D, T> *&result )
+template<int D>
+void CKDTree<D>::_Nearest( CKDNode<D> *&node, const double pos[D], double &radius, CKDHyperRect<D> rect, CKDNode<D> *&result )
 {
 	int dir = node->dir;
 	double dummy;
-	CKDNode<D, T> *nearer, *farther;
+	CKDNode<D> *nearer, *farther;
 	dummy = pos[dir] - node->pos[dir];
 	if (dummy <= 0) {
 		nearer = node->left;
@@ -174,7 +119,7 @@ void CKDTree<D, T>::_Nearest( CKDNode<D, T> *&node, const double pos[D], double 
 
 	/* Check the distance of the point at the current node, compare it
 	 * with our best so far */
-	double dist_this = dist<D>(node->pos, pos);
+	double dist_this = dist(node->pos, pos, D);
 	if (dist_this < radius) {
 		//*result = node;
 		radius = dist_this;
@@ -200,7 +145,7 @@ void CKDTree<D, T>::_Nearest( CKDNode<D, T> *&node, const double pos[D], double 
 		/* Check if we have to recurse down by calculating the closest
 		 * point of the hyperrect and see if it's closer than our
 		 * minimum distance in result_dist_sq. */
-		if (dist_rect<2>(rect, pos) < radius) {
+		if (rect.Distance(pos) < radius) {
 			/* Recurse down into farther subtree */
 			_Nearest(farther, pos, radius, rect, result);
 		}
