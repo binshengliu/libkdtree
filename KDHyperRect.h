@@ -54,7 +54,7 @@ double CKDHyperRect<D>::Distance( const double pos[D] )
 		} else if (pos[i] > bound[i].max) {
 			result += pow(bound[i].max - pos[i], 2);
 		} else {
-			result += pow(pos[i], 2);
+			// nothing
 		}
 	}
 
