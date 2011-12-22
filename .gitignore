@@ -1,0 +1,22 @@
+Release/
+Debug/
+lib/
+log/
+ftp/
+testing layout/
+revisions/
+*.exe
+*.ncb
+*.suo
+*.lay
+*.lay2
+*.rgn
+*.sim
+*.aps
+*Box.*
+*~
+*.txt
+*.dump
+*.msr
+*.vcproj
+*.user
