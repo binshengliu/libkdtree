@@ -17,7 +17,7 @@ public:
 
 	int Insert(const double pos[D], int data = 0);
 	void Nearest(const double pos[D], double result[D], int &data);
-	void NearestRange(const double pos[D], double range);
+	CKDResult<D> &NearestRange(const double pos[D], double range);
 	void SetDestructor(void (*dest)(int));
 private:
 	int _Insert(CKDNode<D> *&node, const double pos[D], int data, int dir);
@@ -166,11 +166,12 @@ void CKDTree<D>::_Nearest( CKDNode<D> *&node, const double pos[D], double &radiu
 }
 
 template<int D>
-void CKDTree<D>::NearestRange( const double pos[D], double range )
+CKDResult<D> &CKDTree<D>::NearestRange( const double pos[D], double range )
 {
 	static CKDResult<D> result;
 	result.Reset();
 	_NearestRange(root, pos, range, rect, result);
+	return result;
 }
 
 template<int D>
